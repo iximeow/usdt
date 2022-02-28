@@ -201,11 +201,20 @@ fn read_and_update_record_version(data: &[u8]) -> Result<u8, crate::Error> {
         // that would require another feature flag pinning us to a nightly compiler.
         let mut version = u8::MAX;
         let record_version_ptr = data.as_ptr();
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             asm!(
                 "lock xchg al, [{}]",
                 in(reg) record_version_ptr,
                 inout("al") version,
+            );
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        unsafe {
+            asm!(
+                "lock xchg {}, [{}]",
+                inout(reg) version,
+                in(reg) record_version_ptr,
             );
         }
         Ok(version)
